@@ -1,0 +1,32 @@
+name: Refresh runners
+
+# GitHub cron is UTC. In winter (GMT) UTC = UK time; in summer (BST) these run an hour later UK time.
+on:
+  schedule:
+    - cron: "0 7 * * *"
+    - cron: "0 11 * * *"
+    - cron: "0 16 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Fetch runners
+        env:
+          RP_API_KEY: ${{ secrets.RP_API_KEY }}
+          RP_JWT_KEY: ${{ secrets.RP_JWT_KEY }}
+        run: python runners.py
+      - name: Commit
+        run: |
+          git config user.name "runners-bot"
+          git config user.email "runners-bot@users.noreply.github.com"
+          git add -A runners_*.json
+          if git diff --staged --quiet; then echo "No changes."; else git commit -m "Runners $(date -u +'%Y-%m-%d %H:%M UTC')" && git push; fi
